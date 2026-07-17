@@ -9,6 +9,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -139,143 +141,203 @@ fun MainMenuScreen(
             .fillMaxSize()
             .background(
                 Brush.linearGradient(
-                    colors = listOf(Color(0xFF1A1C1E), Color(0xFF2C3E50)),
+                    colors = listOf(Color(0xFF11141A), Color(0xFF1A2634)),
                     start = Offset(0f, 0f),
-                    end = Offset(0f, 1000f)
+                    end = Offset(1000f, 1000f)
                 )
             ),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+        Row(
             modifier = Modifier
-                .widthIn(max = 600.dp)
-                .padding(24.dp)
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Elegant Title
-            Text(
-                text = "حرب الخنادق — الخلاص",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFFF39C12),
-                    letterSpacing = 1.5.sp
-                ),
-                textAlign = TextAlign.Center
-            )
-
-            Text(
-                text = "اختر فصيلك وقُد جيشك للسيطرة على خنادق الجبهة وتحقيق النصر الحاسم!",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = Color.White.copy(alpha = 0.8f)
-                ),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-
-            // Factions Selection Side-by-Side
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth()
+            // Left Column: Title & Play Action (42% width)
+            Column(
+                modifier = Modifier
+                    .weight(0.42f)
+                    .fillMaxHeight(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Allies Card (الحلفاء)
-                FactionCard(
-                    title = "قوات الحلفاء",
-                    description = "الزي الأزرق — الدفاع المنظم والإمدادات المستقرة.",
-                    colorAccent = Color(0xFF3498DB),
-                    isSelected = selectedFaction == Faction.ALLIES,
-                    onClick = { selectedFaction = Faction.ALLIES },
-                    modifier = Modifier.weight(1f)
-                )
-
-                // Axis Card (المحور)
-                FactionCard(
-                    title = "قوات المحور",
-                    description = "الزي الزيتوني — الهجوم العنيف والضربات المباغتة.",
-                    colorAccent = Color(0xFFE74C3C),
-                    isSelected = selectedFaction == Faction.AXIS,
-                    onClick = { selectedFaction = Faction.AXIS },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            // Stage Selection Panel
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.07f)),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                // Glow Military Star Emblem
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFF39C12).copy(alpha = 0.1f))
+                        .border(2.dp, Color(0xFFF39C12), CircleShape),
+                    contentAlignment = Alignment.Center
                 ) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        tint = Color(0xFFF39C12),
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Elegant Title
+                Text(
+                    text = "حرب الخنادق — الخلاص",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFF39C12),
+                        fontSize = 20.sp,
+                        letterSpacing = 1.sp
+                    ),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = "قُد جيشك للسيطرة على خنادق الجبهة وتحقيق النصر الحاسم!",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 11.sp
+                    ),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Large Start Button - Very prominent and clickable
+                Button(
+                    onClick = { onStartGame(selectedFaction, selectedStage) },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2ECC71)),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .testTag("start_battle_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "اختر الجبهة القتالية (المرحلة):",
-                        style = MaterialTheme.typography.titleSmall.copy(
+                        text = "ابدأ المعركة القتالية الآن",
+                        style = MaterialTheme.typography.titleMedium.copy(
                             color = Color.White,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
                         )
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
+                }
+            }
+
+            // Right Column: Selection Setup (58% width)
+            Column(
+                modifier = Modifier
+                    .weight(0.58f)
+                    .fillMaxHeight(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "إعدادات المعركة الحربية",
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    ),
+                    modifier = Modifier
+                        .align(Alignment.Start)
+                        .padding(bottom = 6.dp)
+                )
+
+                // Factions Selection Side-by-Side
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Allies Card (الحلفاء)
+                    FactionCard(
+                        title = "قوات الحلفاء",
+                        description = "الدفاع المنظم والإمدادات المستقرة.",
+                        colorAccent = Color(0xFF3498DB),
+                        isSelected = selectedFaction == Faction.ALLIES,
+                        onClick = { selectedFaction = Faction.ALLIES },
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Axis Card (المحور)
+                    FactionCard(
+                        title = "قوات المحور",
+                        description = "الهجوم العنيف والضربات المباغتة.",
+                        colorAccent = Color(0xFFE74C3C),
+                        isSelected = selectedFaction == Faction.AXIS,
+                        onClick = { selectedFaction = Faction.AXIS },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Stage Selection Panel
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        listOf(1, 2, 3).forEach { stage ->
-                            val stageName = when(stage) {
-                                1 -> "التدريب"
-                                2 -> "الصمود"
-                                else -> "الحرب الشاملة"
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(
-                                        if (selectedStage == stage) Color(0xFFF39C12)
-                                        else Color.White.copy(alpha = 0.1f)
+                        Text(
+                            text = "اختر الجبهة القتالية (المرحلة):",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            listOf(1, 2, 3).forEach { stage ->
+                                val stageName = when(stage) {
+                                    1 -> "التدريب"
+                                    2 -> "الصمود"
+                                    else -> "الحرب الشاملة"
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(
+                                            if (selectedStage == stage) Color(0xFFF39C12)
+                                            else Color.White.copy(alpha = 0.08f)
+                                        )
+                                        .clickable { onStageSelected(stage) }
+                                        .padding(vertical = 6.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = stageName,
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            color = if (selectedStage == stage) Color.Black else Color.White,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp
+                                        )
                                     )
-                                    .clickable { onStageSelected(stage) }
-                                    .padding(vertical = 8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = stageName,
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        color = if (selectedStage == stage) Color.Black else Color.White,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                )
+                                }
                             }
                         }
                     }
                 }
-            }
-
-            // Large Start Button
-            Button(
-                onClick = { onStartGame(selectedFaction, selectedStage) },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2ECC71)),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp)
-                    .testTag("start_battle_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PlayArrow,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "ابدأ المعركة القتالية الآن",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
             }
         }
     }
@@ -292,27 +354,27 @@ fun RowScope.FactionCard(
 ) {
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) colorAccent.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.05f)
+            containerColor = if (isSelected) colorAccent.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.04f)
         ),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(10.dp),
         modifier = modifier
             .border(
-                width = if (isSelected) 3.dp else 1.dp,
-                color = if (isSelected) colorAccent else Color.White.copy(alpha = 0.15f),
-                shape = RoundedCornerShape(12.dp)
+                width = if (isSelected) 2.dp else 1.dp,
+                color = if (isSelected) colorAccent else Color.White.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(10.dp)
             )
             .clickable { onClick() }
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(24.dp)
                     .clip(CircleShape)
                     .background(colorAccent),
                 contentAlignment = Alignment.Center
@@ -321,15 +383,16 @@ fun RowScope.FactionCard(
                     imageVector = if (isSelected) Icons.Default.Check else Icons.Default.Star,
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(14.dp)
                 )
             }
 
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium.copy(
+                style = MaterialTheme.typography.bodyMedium.copy(
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = Color.White,
+                    fontSize = 12.sp
                 ),
                 textAlign = TextAlign.Center
             )
@@ -337,10 +400,11 @@ fun RowScope.FactionCard(
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall.copy(
-                    color = Color.White.copy(alpha = 0.7f)
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 9.sp
                 ),
                 textAlign = TextAlign.Center,
-                minLines = 2
+                maxLines = 2
             )
         }
     }
@@ -611,15 +675,15 @@ fun HUDOverlay(
             )
         }
 
-        // 3. BOTTOM SOLDIERS ACTION BAR
+        // 3. BOTTOM SOLDIERS ACTION BAR (Moved to Bottom-Right and made ultra-compact)
         Row(
             modifier = Modifier
-                .fillMaxWidth(0.6f)
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 12.dp)
-                .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
-                .padding(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .width(230.dp) // Ultra-compact professional size
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 8.dp, end = 12.dp)
+                .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(10.dp))
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Card 1: Infantry (المشاة)
@@ -766,32 +830,33 @@ fun SpawnCardButton(
         colors = CardDefaults.cardColors(
             containerColor = if (isEnabled) Color(0xFF34495E) else Color(0xFF2C3E50).copy(alpha = 0.4f)
         ),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(6.dp),
         modifier = modifier
-            .shadow(2.dp)
+            .shadow(1.dp)
+            .height(68.dp) // Highly compact sleek square height
             .clickable(enabled = isEnabled) { onClick() }
             .border(
                 width = 1.dp,
-                color = if (isEnabled) Color(0xFFF39C12) else Color.White.copy(alpha = 0.1f),
-                shape = RoundedCornerShape(8.dp)
+                color = if (isEnabled) Color(0xFFF39C12) else Color.White.copy(alpha = 0.08f),
+                shape = RoundedCornerShape(6.dp)
             )
     ) {
         Box(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             Column(
-                modifier = Modifier.padding(6.dp),
+                modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                verticalArrangement = Arrangement.spacedBy(0.5.dp)
             ) {
                 if (cardBitmap != null) {
                     Image(
                         bitmap = cardBitmap.asImageBitmap(),
                         contentDescription = title,
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(4.dp))
+                            .size(22.dp) // Ultra-compact image icon
+                            .clip(RoundedCornerShape(3.dp))
                     )
                 } else {
                     // Header / Mini Icon
@@ -799,7 +864,7 @@ fun SpawnCardButton(
                         imageVector = icon,
                         contentDescription = null,
                         tint = if (isEnabled) Color(0xFFF1C40F) else Color.White.copy(alpha = 0.4f),
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(12.dp)
                     )
                 }
 
@@ -807,7 +872,7 @@ fun SpawnCardButton(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodySmall.copy(
-                        fontSize = 11.sp,
+                        fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (isEnabled) Color.White else Color.White.copy(alpha = 0.5f)
                     )
@@ -817,22 +882,22 @@ fun SpawnCardButton(
                 Text(
                     text = countLabel,
                     style = MaterialTheme.typography.bodySmall.copy(
-                        fontSize = 9.sp,
-                        color = Color.LightGray.copy(alpha = 0.7f)
+                        fontSize = 8.sp,
+                        color = Color.LightGray.copy(alpha = 0.6f)
                     )
                 )
 
                 // Cost Badge
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
+                        .clip(RoundedCornerShape(3.dp))
                         .background(if (canAfford) Color(0xFF27AE60) else Color(0xFFC0392B))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                        .padding(horizontal = 4.dp, vertical = 1.dp)
                 ) {
                     Text(
                         text = "تكلفة $cost",
                         style = MaterialTheme.typography.bodySmall.copy(
-                            fontSize = 8.sp,
+                            fontSize = 7.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
@@ -840,19 +905,19 @@ fun SpawnCardButton(
                 }
             }
 
-            // Cooldown overlay circle
+            // Cooldown overlay circle matching exact card bounds
             if (coolingDown) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .matchParentSize()
                         .background(Color.Black.copy(alpha = 0.55f)),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(
                         progress = cooldownProgress,
                         color = Color(0xFFE74C3C),
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(24.dp)
+                        strokeWidth = 1.5.dp,
+                        modifier = Modifier.size(16.dp) // Ultra-compact progress spinner
                     )
                 }
             }

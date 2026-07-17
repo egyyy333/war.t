@@ -62,11 +62,41 @@ object GameAssets {
 
     private fun loadBitmap(context: Context, filename: String): Bitmap? {
         return try {
-            context.assets.open(filename).use { stream ->
-                BitmapFactory.decodeStream(stream)
+            // Safe decoding to avoid OutOfMemoryError on large files
+            val options = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
             }
-        } catch (e: IOException) {
-            Log.d(TAG, "Asset image not found: $filename - using procedural fallback")
+            context.assets.open(filename).use { stream ->
+                BitmapFactory.decodeStream(stream, null, options)
+            }
+
+            // Limit maximum dimension to 1024px to keep memory consumption low
+            val reqWidth = 1024
+            val reqHeight = 1024
+            var inSampleSize = 1
+
+            if (options.outHeight > reqHeight || options.outWidth > reqWidth) {
+                val halfHeight = options.outHeight / 2
+                val halfWidth = options.outWidth / 2
+                while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
+                    inSampleSize *= 2
+                }
+            }
+
+            val decodeOptions = BitmapFactory.Options().apply {
+                this.inSampleSize = inSampleSize
+            }
+            context.assets.open(filename).use { stream ->
+                val bmp = BitmapFactory.decodeStream(stream, null, decodeOptions)
+                if (bmp == null) {
+                    Log.e(TAG, "Failed to decode bitmap stream for $filename")
+                } else {
+                    Log.i(TAG, "Successfully loaded asset: $filename (${bmp.width}x${bmp.height}) at sampleSize $inSampleSize")
+                }
+                bmp
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "Exception opening or decoding asset file: $filename", e)
             null
         }
     }
