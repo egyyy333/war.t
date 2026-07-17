@@ -41,9 +41,12 @@ object GameAssets {
     private var soundLose: Int = 0
 
     fun loadAll(context: Context) {
-        if (isLoaded) return
+        if (isLoaded && bgBitmap != null && trenchBitmap != null && spriteInfantryWalk != null) {
+            Log.i(TAG, "Assets already fully loaded, skipping reload.")
+            return
+        }
         
-        Log.i(TAG, "Pre-loading game assets from assets directory...")
+        Log.i(TAG, "Pre-loading game assets from assets directory (forceReload = ${bgBitmap == null})...")
         
         // Clear stale cached audio assets from previous corrupted runs to force reload clean ones
         try {
@@ -78,24 +81,40 @@ object GameAssets {
         initSoundPool(context)
         
         isLoaded = true
-        Log.i(TAG, "Pre-loading game assets completed.")
+        Log.i(TAG, "Pre-loading game assets completed. bgBitmap is null: ${bgBitmap == null}")
     }
 
     private fun loadBitmap(context: Context, filename: String): Bitmap? {
-        return try {
+        try {
             context.assets.open(filename).use { stream ->
                 val bmp = BitmapFactory.decodeStream(stream)
-                if (bmp == null) {
-                    Log.e(TAG, "Failed to decode bitmap stream for $filename")
-                } else {
+                if (bmp != null) {
                     Log.i(TAG, "Successfully loaded asset: $filename (${bmp.width}x${bmp.height})")
+                    return bmp
+                } else {
+                    Log.e(TAG, "Failed to decode bitmap stream (returned null) for $filename")
                 }
-                bmp
+            }
+        } catch (oom: OutOfMemoryError) {
+            Log.e(TAG, "OutOfMemoryError loading asset: $filename, retrying with downsampling...", oom)
+            try {
+                val options = BitmapFactory.Options().apply {
+                    inSampleSize = 2
+                }
+                context.assets.open(filename).use { stream ->
+                    val bmp = BitmapFactory.decodeStream(stream, null, options)
+                    if (bmp != null) {
+                        Log.i(TAG, "Successfully loaded downsampled asset: $filename (${bmp.width}x${bmp.height})")
+                        return bmp
+                    }
+                }
+            } catch (e2: Throwable) {
+                Log.e(TAG, "Failed downsampled loading for $filename", e2)
             }
         } catch (e: Throwable) {
             Log.e(TAG, "Exception opening or decoding asset file: $filename", e)
-            null
         }
+        return null
     }
 
     private fun initSoundPool(context: Context) {
