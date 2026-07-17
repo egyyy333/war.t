@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -909,14 +910,14 @@ fun HUDOverlay(
             )
         }
 
-        // 3. BOTTOM SOLDIERS ACTION BAR (Moved to Bottom-Right and made ultra-compact)
+        // 3. BOTTOM SOLDIERS ACTION BAR (Wider and more spacious)
         Row(
             modifier = Modifier
-                .width(230.dp) // Ultra-compact professional size
+                .width(340.dp) // Professional spacious size
                 .align(Alignment.BottomEnd)
                 .padding(bottom = 8.dp, end = 12.dp)
                 .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(10.dp))
-                .padding(4.dp),
+                .padding(6.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1062,17 +1063,17 @@ fun SpawnCardButton(
 
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = if (isEnabled) Color(0xFF34495E) else Color(0xFF2C3E50).copy(alpha = 0.4f)
+            containerColor = if (isEnabled) Color(0xFF2C3E50) else Color(0xFF1A252F).copy(alpha = 0.6f)
         ),
-        shape = RoundedCornerShape(6.dp),
+        shape = RoundedCornerShape(8.dp),
         modifier = modifier
-            .shadow(1.dp)
-            .height(68.dp) // Highly compact sleek square height
+            .shadow(3.dp)
+            .height(102.dp) // Professional taller card height
             .clickable(enabled = isEnabled) { onClick() }
             .border(
-                width = 1.dp,
+                width = 1.2.dp,
                 color = if (isEnabled) Color(0xFFF39C12) else Color.White.copy(alpha = 0.08f),
-                shape = RoundedCornerShape(6.dp)
+                shape = RoundedCornerShape(8.dp)
             )
     ) {
         Box(
@@ -1080,17 +1081,19 @@ fun SpawnCardButton(
             contentAlignment = Alignment.Center
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp),
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(0.5.dp)
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 if (cardBitmap != null) {
                     Image(
                         bitmap = cardBitmap.asImageBitmap(),
                         contentDescription = title,
+                        contentScale = ContentScale.Crop,
                         modifier = Modifier
-                            .size(22.dp) // Ultra-compact image icon
-                            .clip(RoundedCornerShape(3.dp))
+                            .fillMaxWidth()
+                            .height(42.dp) // Highly visible professional card artwork size!
+                            .clip(RoundedCornerShape(4.dp))
                     )
                 } else {
                     // Header / Mini Icon
@@ -1098,40 +1101,46 @@ fun SpawnCardButton(
                         imageVector = icon,
                         contentDescription = null,
                         tint = if (isEnabled) Color(0xFFF1C40F) else Color.White.copy(alpha = 0.4f),
-                        modifier = Modifier.size(12.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
-                // Title
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isEnabled) Color.White else Color.White.copy(alpha = 0.5f)
+                // Title and Squad Count side-by-side or cleanly stacked
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 9.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isEnabled) Color.White else Color.White.copy(alpha = 0.5f)
+                        ),
+                        modifier = Modifier.padding(start = 2.dp)
                     )
-                )
-
-                // Squad Count Label
-                Text(
-                    text = countLabel,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontSize = 8.sp,
-                        color = Color.LightGray.copy(alpha = 0.6f)
+                    Text(
+                        text = countLabel,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 8.sp,
+                            color = Color.LightGray.copy(alpha = 0.8f)
+                        ),
+                        modifier = Modifier.padding(end = 2.dp)
                     )
-                )
+                }
 
                 // Cost Badge
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(3.dp))
                         .background(if (canAfford) Color(0xFF27AE60) else Color(0xFFC0392B))
-                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                        .padding(horizontal = 6.dp, vertical = 1.5.dp)
                 ) {
                     Text(
-                        text = "تكلفة $cost",
+                        text = "إمداد $cost",
                         style = MaterialTheme.typography.bodySmall.copy(
-                            fontSize = 7.sp,
+                            fontSize = 7.5.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
@@ -1144,14 +1153,14 @@ fun SpawnCardButton(
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .background(Color.Black.copy(alpha = 0.55f)),
+                        .background(Color.Black.copy(alpha = 0.65f)),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(
                         progress = cooldownProgress,
                         color = Color(0xFFE74C3C),
-                        strokeWidth = 1.5.dp,
-                        modifier = Modifier.size(16.dp) // Ultra-compact progress spinner
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(24.dp) // Clear progress spinner
                     )
                 }
             }
@@ -1520,10 +1529,11 @@ fun DrawScope.drawSoldierEntity(
         val frameWidth = bitmap.width / numFrames
         val frameHeight = bitmap.height
 
-        val sWidth = 40f * scaleX
-        val sHeight = 40f * scaleY
+        val isInTrench = soldier.state == UnitState.IN_TRENCH
+        val sWidth = (if (isInTrench) 33f else 38f) * scaleX
+        val sHeight = (if (isInTrench) 33f else 38f) * scaleY
         val dstX = sx - sWidth / 2
-        val dstY = sy - sHeight + 12f * scaleY // adjust to mud floor
+        val dstY = sy - sHeight + (if (isInTrench) 8f else 12f) * scaleY // adjust to mud floor
 
         // Flip horizontally for Allies (they move right-to-left) so they face left
         scale(scaleX = if (isAllies) -1f else 1f, scaleY = 1f, pivot = Offset(sx, sy)) {

@@ -53,7 +53,7 @@ data class Squad(
 data class Trench(
     val id: Int, // 0 = Left Trench, 1 = Right Trench
     val centerX: Float,
-    val width: Float = 140f,
+    val width: Float = 155f,
     val depth: Float = 80f,
     val squads: MutableList<Squad> = mutableListOf(),
     var occupiedFaction: Faction? = null

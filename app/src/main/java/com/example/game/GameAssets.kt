@@ -72,7 +72,7 @@ object GameAssets {
         }
         
         // Load Images from assets
-        bgBitmap = loadBitmap(context, "images/Background Landscape.png")
+        bgBitmap = loadBitmap(context, "images/Background Landscape.jpg")
         trenchBitmap = loadBitmap(context, "images/Trench.png")
         
         // Sprites
@@ -98,16 +98,16 @@ object GameAssets {
     }
 
     private fun loadBitmap(context: Context, filename: String): Bitmap? {
-        Log.i(TAG, "Starting robust decode for: $filename")
+        Log.i(TAG, "Starting robust ByteArray decode for: $filename")
         
-        // 1. Read all bytes from the asset into a byte array
+        // 1. Read all bytes from assets into memory
         val bytes: ByteArray
         try {
             context.assets.open(filename).use { stream ->
                 bytes = stream.readBytes()
             }
         } catch (e: Exception) {
-            val msg = "خطأ أثناء فتح وقراءة ملف $filename: ${e.localizedMessage}"
+            val msg = "خطأ أثناء قراءة ملف $filename: ${e.localizedMessage}"
             Log.e(TAG, msg, e)
             loadLogs.add("❌ $msg")
             return null
@@ -120,7 +120,7 @@ object GameAssets {
             return null
         }
 
-        // 2. Decode bounds to get original dimensions safely from the byte array
+        // 2. Decode bounds to find dimensions (works perfectly on interlaced PNGs via ByteArray)
         val boundsOptions = BitmapFactory.Options().apply {
             inJustDecodeBounds = true
         }
@@ -135,11 +135,10 @@ object GameAssets {
             return null
         }
 
-        // 3. Determine highly optimized target size and downsampling configuration
-        // We limit the maximum resolution in memory to prevent OutOfMemory on devices!
-        // For the large background, 1500px width is perfect for standard displays.
-        // For sprites and UI, 512px is more than enough for detailed visuals.
-        val maxTargetDim = if (filename.contains("Background") || filename.contains("Landscape")) 1500 else 512
+        // 3. Determine target size and inSampleSize to prevent OutOfMemory
+        // Background Landscape maximum target width is 1200px (standard screen widths)
+        // Sprites/UI Cards maximum target width is 384px
+        val maxTargetDim = if (filename.contains("Background") || filename.contains("Landscape")) 1200 else 384
         
         var sampleSize = 1
         if (srcWidth > maxTargetDim || srcHeight > maxTargetDim) {
@@ -152,7 +151,7 @@ object GameAssets {
 
         val decodeOptions = BitmapFactory.Options().apply {
             inSampleSize = sampleSize
-            // Use RGB_565 (2 bytes/pixel) for background without transparency to save 50% RAM
+            // Use RGB_565 (2 bytes/pixel) for background/trench to save 50% RAM
             inPreferredConfig = if (filename.contains("Background") || filename.contains("Landscape") || filename.contains("Trench")) {
                 Bitmap.Config.RGB_565
             } else {
@@ -177,10 +176,10 @@ object GameAssets {
         } catch (oom: OutOfMemoryError) {
             Log.e(TAG, "نفاد الذاكرة أثناء تحميل $filename، جاري المحاولة بأكبر تصغير...", oom)
         } catch (e: Exception) {
-            Log.e(TAG, "خطأ غير متوقع أثناء تحميل $filename", e)
+            Log.e(TAG, "خطأ غير متوقع أثناء تحميل $filename: ${e.localizedMessage}", e)
         }
 
-        // 5. Hardcore Fallback: Progressive downsampling on OOM or failure
+        // 5. Fallback: Progressive downsampling on failure/OOM
         for (fallbackSize in listOf(2, 4, 8, 16)) {
             if (fallbackSize <= sampleSize) continue
             try {
