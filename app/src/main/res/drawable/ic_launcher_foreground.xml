@@ -1,70 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-
-    <!-- Left Military Chevron (Wing) -->
-    <path
-        android:fillColor="#F1C40F"
-        android:pathData="M16,51 L32,51 L28,57 L12,57 Z" />
-    <path
-        android:fillColor="#D35400"
-        android:pathData="M14,57 L28,57 L24,61 L10,61 Z" />
-
-    <!-- Right Military Chevron (Wing) -->
-    <path
-        android:fillColor="#F1C40F"
-        android:pathData="M92,51 L76,51 L80,57 L96,57 Z" />
-    <path
-        android:fillColor="#D35400"
-        android:pathData="M94,57 L80,57 L84,61 L98,61 Z" />
-
-    <!-- Circular Gold Crest Ring -->
-    <path
-        android:fillColor="#F1C40F"
-        android:pathData="M54,18 C73.88,18 90,34.12 90,54 C90,73.88 73.88,90 54,90 C34.12,90 18,73.88 18,54 C18,34.12 34.12,18 54,18 Z M54,22 C36.33,22 22,36.33 22,54 C22,71.67 36.33,86 54,86 C71.67,86 86,71.67 86,54 C86,36.33 71.67,22 54,22 Z" />
-
-    <!-- Star Shaded Polygons (3D Beveled Star in Center) -->
-    <!-- Top Spike -->
-    <path
-        android:fillColor="#F1C40F"
-        android:pathData="M54,54 L54,28 L47,46 Z" />
-    <path
-        android:fillColor="#D35400"
-        android:pathData="M54,54 L54,28 L61,46 Z" />
-
-    <!-- Right Spike -->
-    <path
-        android:fillColor="#F1C40F"
-        android:pathData="M54,54 L78,44 L61,46 Z" />
-    <path
-        android:fillColor="#D35400"
-        android:pathData="M54,54 L78,44 L64,58 Z" />
-
-    <!-- Bottom Right Spike -->
-    <path
-        android:fillColor="#F1C40F"
-        android:pathData="M54,54 L69,76 L64,58 Z" />
-    <path
-        android:fillColor="#D35400"
-        android:pathData="M54,54 L69,76 L54,65 Z" />
-
-    <!-- Bottom Left Spike -->
-    <path
-        android:fillColor="#F1C40F"
-        android:pathData="M54,54 L39,76 L54,65 Z" />
-    <path
-        android:fillColor="#D35400"
-        android:pathData="M54,54 L39,76 L44,58 Z" />
-
-    <!-- Left Spike -->
-    <path
-        android:fillColor="#F1C40F"
-        android:pathData="M54,54 L30,44 L44,58 Z" />
-    <path
-        android:fillColor="#D35400"
-        android:pathData="M54,54 L30,44 L47,46 Z" />
-
-</vector>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:width="66dp"
+        android:height="66dp"
+        android:drawable="@drawable/img_app_icon_1784267214002"
+        android:gravity="center" />
+</layer-list>

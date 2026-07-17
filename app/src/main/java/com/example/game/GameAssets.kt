@@ -12,6 +12,7 @@ object GameAssets {
     private const val TAG = "GameAssets"
 
     var isMuted = false
+    var isLoaded = false
 
     // Bitmaps (Null if not found in assets)
     var bgBitmap: Bitmap? = null
@@ -40,6 +41,10 @@ object GameAssets {
     private var soundLose: Int = 0
 
     fun loadAll(context: Context) {
+        if (isLoaded) return
+        
+        Log.i(TAG, "Pre-loading game assets from assets directory...")
+        
         // Load Images from assets
         bgBitmap = loadBitmap(context, "images/Background Landscape.png")
         trenchBitmap = loadBitmap(context, "images/Trench.png")
@@ -58,40 +63,19 @@ object GameAssets {
 
         // Load Sounds
         initSoundPool(context)
+        
+        isLoaded = true
+        Log.i(TAG, "Pre-loading game assets completed.")
     }
 
     private fun loadBitmap(context: Context, filename: String): Bitmap? {
         return try {
-            // Safe decoding to avoid OutOfMemoryError on large files
-            val options = BitmapFactory.Options().apply {
-                inJustDecodeBounds = true
-            }
             context.assets.open(filename).use { stream ->
-                BitmapFactory.decodeStream(stream, null, options)
-            }
-
-            // Limit maximum dimension to 1024px to keep memory consumption low
-            val reqWidth = 1024
-            val reqHeight = 1024
-            var inSampleSize = 1
-
-            if (options.outHeight > reqHeight || options.outWidth > reqWidth) {
-                val halfHeight = options.outHeight / 2
-                val halfWidth = options.outWidth / 2
-                while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
-                    inSampleSize *= 2
-                }
-            }
-
-            val decodeOptions = BitmapFactory.Options().apply {
-                this.inSampleSize = inSampleSize
-            }
-            context.assets.open(filename).use { stream ->
-                val bmp = BitmapFactory.decodeStream(stream, null, decodeOptions)
+                val bmp = BitmapFactory.decodeStream(stream)
                 if (bmp == null) {
                     Log.e(TAG, "Failed to decode bitmap stream for $filename")
                 } else {
-                    Log.i(TAG, "Successfully loaded asset: $filename (${bmp.width}x${bmp.height}) at sampleSize $inSampleSize")
+                    Log.i(TAG, "Successfully loaded asset: $filename (${bmp.width}x${bmp.height})")
                 }
                 bmp
             }
@@ -129,10 +113,19 @@ object GameAssets {
 
     private fun loadSound(context: Context, pool: SoundPool, filename: String): Int {
         return try {
-            val fd = context.assets.openFd(filename)
-            pool.load(fd, 1)
-        } catch (e: IOException) {
-            Log.d(TAG, "Asset sound not found: $filename")
+            // To bypass assets.openFd restriction on compressed files,
+            // copy the asset file to a cache file and load from there.
+            val cacheFile = java.io.File(context.cacheDir, filename.replace("/", "_"))
+            if (!cacheFile.exists() || cacheFile.length() == 0L) {
+                context.assets.open(filename).use { input ->
+                    cacheFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+            }
+            pool.load(cacheFile.absolutePath, 1)
+        } catch (e: Exception) {
+            Log.d(TAG, "Failed to load sound asset: $filename (might be optional fallback)")
             0
         }
     }
