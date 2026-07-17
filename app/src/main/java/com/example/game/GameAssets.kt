@@ -98,23 +98,34 @@ object GameAssets {
     }
 
     private fun loadBitmap(context: Context, filename: String): Bitmap? {
-        Log.i(TAG, "Starting decode for: $filename")
+        Log.i(TAG, "Starting robust decode for: $filename")
         
-        // 1. First read the dimensions only using inJustDecodeBounds (extremely fast, zero extra RAM)
-        val boundsOptions = BitmapFactory.Options().apply {
-            inJustDecodeBounds = true
-        }
+        // 1. Read all bytes from the asset into a byte array
+        val bytes: ByteArray
         try {
             context.assets.open(filename).use { stream ->
-                BitmapFactory.decodeStream(stream, null, boundsOptions)
+                bytes = stream.readBytes()
             }
         } catch (e: Exception) {
-            val msg = "خطأ أثناء قراءة أبعاد $filename: ${e.localizedMessage}"
+            val msg = "خطأ أثناء فتح وقراءة ملف $filename: ${e.localizedMessage}"
             Log.e(TAG, msg, e)
             loadLogs.add("❌ $msg")
             return null
         }
 
+        if (bytes.isEmpty()) {
+            val msg = "ملف الصورة فارغ: $filename"
+            Log.e(TAG, msg)
+            loadLogs.add("❌ $msg")
+            return null
+        }
+
+        // 2. Decode bounds to get original dimensions safely from the byte array
+        val boundsOptions = BitmapFactory.Options().apply {
+            inJustDecodeBounds = true
+        }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, boundsOptions)
+        
         val srcWidth = boundsOptions.outWidth
         val srcHeight = boundsOptions.outHeight
         if (srcWidth <= 0 || srcHeight <= 0) {
@@ -124,64 +135,69 @@ object GameAssets {
             return null
         }
 
-        // 2. Select highly optimized decoding configuration
-        val decodeOptions = BitmapFactory.Options().apply {
-            // For the heavy background landscape, downsample by 2 and use RGB_565 (opaque, cuts RAM in half)
-            if (filename.contains("Background") || filename.contains("Landscape")) {
-                inSampleSize = 2 // 2988x1224 -> 1494x612
-                inPreferredConfig = Bitmap.Config.RGB_565 // No alpha transparency needed, uses 2 bytes/pixel
-            } else {
-                inSampleSize = 1
-                inPreferredConfig = Bitmap.Config.ARGB_8888 // Standard format with transparency support for sprites
+        // 3. Determine highly optimized target size and downsampling configuration
+        // We limit the maximum resolution in memory to prevent OutOfMemory on devices!
+        // For the large background, 1500px width is perfect for standard displays.
+        // For sprites and UI, 512px is more than enough for detailed visuals.
+        val maxTargetDim = if (filename.contains("Background") || filename.contains("Landscape")) 1500 else 512
+        
+        var sampleSize = 1
+        if (srcWidth > maxTargetDim || srcHeight > maxTargetDim) {
+            val halfWidth = srcWidth / 2
+            val halfHeight = srcHeight / 2
+            while ((halfWidth / sampleSize) >= maxTargetDim && (halfHeight / sampleSize) >= maxTargetDim) {
+                sampleSize *= 2
             }
         }
 
-        // 3. Decode the bitmap with selected options directly from the stream
+        val decodeOptions = BitmapFactory.Options().apply {
+            inSampleSize = sampleSize
+            // Use RGB_565 (2 bytes/pixel) for background without transparency to save 50% RAM
+            inPreferredConfig = if (filename.contains("Background") || filename.contains("Landscape") || filename.contains("Trench")) {
+                Bitmap.Config.RGB_565
+            } else {
+                Bitmap.Config.ARGB_8888
+            }
+        }
+
+        // 4. Decode the bitmap from the byte array
         try {
-            context.assets.open(filename).use { stream ->
-                val bmp = BitmapFactory.decodeStream(stream, null, decodeOptions)
+            val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOptions)
+            if (bmp != null) {
+                val ramUsageMb = (bmp.allocationByteCount / (1024.0 * 1024.0))
+                val msg = "نجح تحميل: $filename (${bmp.width}x${bmp.height}) [الذاكرة: ${String.format("%.2f", ramUsageMb)} ميجا، تصغير: 1/$sampleSize]"
+                Log.i(TAG, msg)
+                loadLogs.add("✅ $msg")
+                return bmp
+            } else {
+                val msg = "فشل فك تشفير $filename (المعالج أرجع null)"
+                Log.e(TAG, msg)
+                loadLogs.add("⚠️ $msg")
+            }
+        } catch (oom: OutOfMemoryError) {
+            Log.e(TAG, "نفاد الذاكرة أثناء تحميل $filename، جاري المحاولة بأكبر تصغير...", oom)
+        } catch (e: Exception) {
+            Log.e(TAG, "خطأ غير متوقع أثناء تحميل $filename", e)
+        }
+
+        // 5. Hardcore Fallback: Progressive downsampling on OOM or failure
+        for (fallbackSize in listOf(2, 4, 8, 16)) {
+            if (fallbackSize <= sampleSize) continue
+            try {
+                val fallbackOptions = BitmapFactory.Options().apply {
+                    inSampleSize = fallbackSize
+                    inPreferredConfig = if (filename.contains("Background")) Bitmap.Config.RGB_565 else Bitmap.Config.ARGB_8888
+                }
+                val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, fallbackOptions)
                 if (bmp != null) {
                     val ramUsageMb = (bmp.allocationByteCount / (1024.0 * 1024.0))
-                    val msg = "نجح تحميل: $filename (${bmp.width}x${bmp.height}) [الذاكرة: ${String.format("%.2f", ramUsageMb)} ميجا]"
+                    val msg = "تم تحميل نسخة مصغرة احتياطية (1/$fallbackSize) لـ: $filename (${bmp.width}x${bmp.height}) [الذاكرة: ${String.format("%.2f", ramUsageMb)} ميجا]"
                     Log.i(TAG, msg)
                     loadLogs.add("✅ $msg")
                     return bmp
-                } else {
-                    val msg = "فشل فك تشفير $filename (المعالج أرجع null)"
-                    Log.e(TAG, msg)
-                    loadLogs.add("⚠️ $msg")
-                }
-            }
-        } catch (oom: OutOfMemoryError) {
-            val msg = "نفاد الذاكرة أثناء تحميل $filename، جاري المحاولة بـ sampleSize أكبر..."
-            Log.e(TAG, msg, oom)
-            loadLogs.add("⚠️ $msg")
-        } catch (e: Exception) {
-            val msg = "خطأ غير متوقع أثناء تحميل $filename: ${e.localizedMessage}"
-            Log.e(TAG, msg, e)
-            loadLogs.add("❌ $msg")
-        }
-
-        // 4. Robust Fallback: Retry with progressive downsampling if initial decode returned null or crashed
-        for (sampleSize in listOf(2, 4, 8)) {
-            if (sampleSize <= decodeOptions.inSampleSize) continue
-            try {
-                val fallbackOptions = BitmapFactory.Options().apply {
-                    inSampleSize = sampleSize
-                    inPreferredConfig = if (filename.contains("Background")) Bitmap.Config.RGB_565 else Bitmap.Config.ARGB_8888
-                }
-                context.assets.open(filename).use { stream ->
-                    val bmp = BitmapFactory.decodeStream(stream, null, fallbackOptions)
-                    if (bmp != null) {
-                        val ramUsageMb = (bmp.allocationByteCount / (1024.0 * 1024.0))
-                        val msg = "تم تحميل نسخة مصغرة احتياطية (1/$sampleSize) لـ: $filename (${bmp.width}x${bmp.height}) [الذاكرة: ${String.format("%.2f", ramUsageMb)} ميجا]"
-                        Log.i(TAG, msg)
-                        loadLogs.add("✅ $msg")
-                        return bmp
-                    }
                 }
             } catch (t: Throwable) {
-                Log.e(TAG, "فشلت المحاولة الاحتياطية لـ $filename بالحجم 1/$sampleSize", t)
+                Log.e(TAG, "فشلت المحاولة الاحتياطية لـ $filename بالحجم 1/$fallbackSize", t)
             }
         }
 
