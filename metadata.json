@@ -1,0 +1,6 @@
+{
+  "name": "Trench War (حرب الخنادق)",
+  "description": "لعبة حرب الخنادق الاستراتيجية بالوضع الأفقي، اوفلاين بالكامل مع جيشين الحلفاء والمحور وجنود المشاة وقاذفي القنابل والقناصة.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
