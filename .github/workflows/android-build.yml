@@ -85,7 +85,7 @@ jobs:
 
       - name: Build Debug and Release APKs
         env:
-          KEYSTORE_PATH: "my-upload-key.jks"
+          KEYSTORE_PATH: "${{ github.workspace }}/my-upload-key.jks"
         run: ./gradlew assembleDebug assembleRelease --no-daemon
 
       - name: Find and Organize Built APKs
