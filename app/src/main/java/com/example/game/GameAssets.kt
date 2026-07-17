@@ -45,6 +45,19 @@ object GameAssets {
         
         Log.i(TAG, "Pre-loading game assets from assets directory...")
         
+        // Clear stale cached audio assets from previous corrupted runs to force reload clean ones
+        try {
+            val cacheFiles = context.cacheDir.listFiles()
+            cacheFiles?.forEach { file ->
+                if (file.name.contains("audio_") || file.name.contains("spawn") || file.name.contains("win") || file.name.contains("lose")) {
+                    Log.i(TAG, "Deleting stale cached file: ${file.name}")
+                    file.delete()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to clear old cached assets", e)
+        }
+        
         // Load Images from assets
         bgBitmap = loadBitmap(context, "images/Background Landscape.png")
         trenchBitmap = loadBitmap(context, "images/Trench.png")
@@ -134,7 +147,12 @@ object GameAssets {
     fun playSpawn() {
         if (isMuted) return
         soundPool?.let { pool ->
-            if (soundSpawn != 0) pool.play(soundSpawn, 1f, 1f, 1, 0, 1f)
+            if (soundSpawn != 0) {
+                pool.play(soundSpawn, 1f, 1f, 1, 0, 1f)
+            } else if (soundHit != 0) {
+                // Pitch-shifted Hit sound as fallback for Spawn
+                pool.play(soundHit, 0.5f, 0.5f, 1, 0, 1.2f)
+            }
         }
     }
 
@@ -167,14 +185,24 @@ object GameAssets {
     fun playWin() {
         if (isMuted) return
         soundPool?.let { pool ->
-            if (soundWin != 0) pool.play(soundWin, 1f, 1f, 1, 0, 1f)
+            if (soundWin != 0) {
+                pool.play(soundWin, 1f, 1f, 1, 0, 1f)
+            } else if (soundExplosion != 0) {
+                // Celebration explosion
+                pool.play(soundExplosion, 1f, 1f, 1, 0, 1.2f)
+            }
         }
     }
 
     fun playLose() {
         if (isMuted) return
         soundPool?.let { pool ->
-            if (soundLose != 0) pool.play(soundLose, 1f, 1f, 1, 0, 1f)
+            if (soundLose != 0) {
+                pool.play(soundLose, 1f, 1f, 1, 0, 1f)
+            } else if (soundHit != 0) {
+                // Low pitch hit sound representing defeat
+                pool.play(soundHit, 1f, 1f, 1, 0, 0.6f)
+            }
         }
     }
 }
