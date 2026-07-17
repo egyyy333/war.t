@@ -100,7 +100,9 @@ fun TrenchWarGameApp(
             .fillMaxSize()
             .background(Color(0xFF1E2124))
     ) {
-        if (screenState == "MENU") {
+        if (!GameAssets.isLoaded) {
+            LoadingSplashScreen()
+        } else if (screenState == "MENU") {
             MainMenuScreen(
                 onStartGame = { faction, stage ->
                     viewModel.startGame(faction, stage)
@@ -121,6 +123,104 @@ fun TrenchWarGameApp(
                     screenState = "MENU"
                 }
             )
+        }
+    }
+}
+
+@Composable
+fun LoadingSplashScreen() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(Color(0xFF11141A), Color(0xFF1A2634)),
+                    start = Offset(0f, 0f),
+                    end = Offset(1000f, 1000f)
+                )
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(24.dp)
+        ) {
+            // Star Emblem with glow
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFF39C12).copy(alpha = 0.1f))
+                    .border(2.dp, Color(0xFFF39C12), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = null,
+                    tint = Color(0xFFF39C12),
+                    modifier = Modifier.size(44.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "حرب الخنادق — الخلاص",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFF39C12),
+                    fontSize = 24.sp,
+                    letterSpacing = 1.sp
+                ),
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "جاري تهيئة الموارد والأصوات القتالية...",
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 14.sp
+                ),
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            CircularProgressIndicator(
+                color = Color(0xFFF39C12),
+                strokeWidth = 3.dp,
+                modifier = Modifier.size(36.dp)
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Box for loading logs to show progress
+            Box(
+                modifier = Modifier
+                    .widthIn(max = 400.dp)
+                    .height(120.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .padding(12.dp)
+            ) {
+                LazyColumn(
+                    reverseLayout = true,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(GameAssets.loadLogs.toList().asReversed()) { log ->
+                        Text(
+                            text = log,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 11.sp,
+                                color = if (log.contains("❌")) Color(0xFFE74C3C) else if (log.contains("⚠️")) Color(0xFFF1C40F) else Color.White
+                            )
+                        )
+                    }
+                }
+            }
         }
     }
 }
