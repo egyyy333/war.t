@@ -40,6 +40,11 @@ import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -209,29 +214,158 @@ fun MainMenuScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Large Start Button - Very prominent and clickable
+                val isAssetsLoaded = GameAssets.isLoaded
                 Button(
-                    onClick = { onStartGame(selectedFaction, selectedStage) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2ECC71)),
+                    onClick = { if (isAssetsLoaded) onStartGame(selectedFaction, selectedStage) },
+                    enabled = isAssetsLoaded,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isAssetsLoaded) Color(0xFF2ECC71) else Color(0xFF7F8C8D),
+                        disabledContainerColor = Color(0xFF5D6D7E)
+                    ),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp)
                         .testTag("start_battle_button")
                 ) {
+                    if (isAssetsLoaded) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "ابدأ المعركة القتالية الآن",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        )
+                    } else {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "جاري تحميل الموارد والأصوات...",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                color = Color.White.copy(alpha = 0.8f),
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp
+                            )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                
+                val context = LocalContext.current
+                var showDiagnostics by remember { mutableStateOf(false) }
+                
+                TextButton(
+                    onClick = { showDiagnostics = true },
+                    modifier = Modifier.testTag("show_diagnostics_button")
+                ) {
                     Icon(
-                        imageVector = Icons.Default.PlayArrow,
+                        imageVector = Icons.Default.Info,
                         contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
+                        tint = Color(0xFFF39C12),
+                        modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "ابدأ المعركة القتالية الآن",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
+                        text = "فحص تشخيص النظام وتحميل الملفات",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = Color(0xFFF39C12),
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 11.sp
                         )
+                    )
+                }
+
+                if (showDiagnostics) {
+                    AlertDialog(
+                        onDismissRequest = { showDiagnostics = false },
+                        title = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Build,
+                                    contentDescription = null,
+                                    tint = Color(0xFFF39C12)
+                                )
+                                Text(
+                                    text = "تشخيص تحميل موارد وأصوات اللعبة",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                                )
+                            }
+                        },
+                        text = {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 250.dp)
+                            ) {
+                                Text(
+                                    text = "حالة الملفات وسجل التحميل الحالي في الذاكرة:",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                    modifier = Modifier.padding(bottom = 6.dp)
+                                )
+                                LazyColumn(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .background(Color.Black.copy(alpha = 0.3f))
+                                        .padding(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    items(GameAssets.loadLogs) { log ->
+                                        Text(
+                                            text = log,
+                                            style = MaterialTheme.typography.bodySmall.copy(
+                                                fontSize = 10.sp,
+                                                color = Color.White
+                                            )
+                                        )
+                                    }
+                                    if (GameAssets.loadLogs.isEmpty()) {
+                                        item {
+                                            Text(
+                                                text = "لا توجد سجلات بعد.",
+                                                style = MaterialTheme.typography.bodySmall.copy(color = Color.LightGray)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            val scope = rememberCoroutineScope()
+                            Button(
+                                onClick = {
+                                    scope.launch(Dispatchers.IO) {
+                                        GameAssets.loadAll(context, force = true)
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE67E22))
+                            ) {
+                                Text("إعادة تحميل قسري للملفات", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold, color = Color.White))
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showDiagnostics = false }) {
+                                Text("إغلاق", color = Color.White)
+                            }
+                        },
+                        containerColor = Color(0xFF1E2634),
+                        titleContentColor = Color.White,
+                        textContentColor = Color.White
                     )
                 }
             }

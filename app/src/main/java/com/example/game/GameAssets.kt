@@ -6,13 +6,21 @@ import android.graphics.BitmapFactory
 import android.media.AudioAttributes
 import android.media.SoundPool
 import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import java.io.IOException
 
 object GameAssets {
     private const val TAG = "GameAssets"
 
     var isMuted = false
-    var isLoaded = false
+    var isLoaded by mutableStateOf(false)
+        private set
+
+    // Diagnostic logs list that UI can observe in real-time
+    val loadLogs = mutableStateListOf<String>()
 
     // Bitmaps (Null if not found in assets)
     var bgBitmap: Bitmap? = null
@@ -32,23 +40,25 @@ object GameAssets {
 
     // Sound IDs (0 if not loaded)
     private var soundPool: SoundPool? = null
-    private var soundSpawn: Int = 0
-    private var soundShootInfantry: Int = 0
-    private var soundShootSniper: Int = 0
-    private var soundExplosion: Int = 0
-    private var soundHit: Int = 0
-    private var soundWin: Int = 0
-    private var soundLose: Int = 0
+    var soundSpawn: Int = 0
+    var soundShootInfantry: Int = 0
+    var soundShootSniper: Int = 0
+    var soundExplosion: Int = 0
+    var soundHit: Int = 0
+    var soundWin: Int = 0
+    var soundLose: Int = 0
 
-    fun loadAll(context: Context) {
-        if (isLoaded && bgBitmap != null && trenchBitmap != null && spriteInfantryWalk != null) {
+    fun loadAll(context: Context, force: Boolean = false) {
+        if (!force && isLoaded && bgBitmap != null && trenchBitmap != null && spriteInfantryWalk != null) {
             Log.i(TAG, "Assets already fully loaded, skipping reload.")
             return
         }
         
-        Log.i(TAG, "Pre-loading game assets from assets directory (forceReload = ${bgBitmap == null})...")
+        loadLogs.clear()
+        loadLogs.add("⏳ البدء في تحميل ملفات اللعبة والأصوات...")
+        Log.i(TAG, "Pre-loading game assets from assets directory (force = $force)...")
         
-        // Clear stale cached audio assets from previous corrupted runs to force reload clean ones
+        // Clear stale cached audio assets from previous runs to force reload clean ones
         try {
             val cacheFiles = context.cacheDir.listFiles()
             cacheFiles?.forEach { file ->
@@ -81,38 +91,59 @@ object GameAssets {
         initSoundPool(context)
         
         isLoaded = true
-        Log.i(TAG, "Pre-loading game assets completed. bgBitmap is null: ${bgBitmap == null}")
+        
+        val summaryMsg = "✅ اكتمل التحميل: الخلفية=${bgBitmap != null}, خنادق=${trenchBitmap != null}, جنود=${spriteInfantryWalk != null}, صوت قتال=${soundShootInfantry != 0}"
+        Log.i(TAG, summaryMsg)
+        loadLogs.add(summaryMsg)
     }
 
     private fun loadBitmap(context: Context, filename: String): Bitmap? {
+        // First try standard high quality decoding
         try {
             context.assets.open(filename).use { stream ->
                 val bmp = BitmapFactory.decodeStream(stream)
                 if (bmp != null) {
-                    Log.i(TAG, "Successfully loaded asset: $filename (${bmp.width}x${bmp.height})")
+                    val msg = "نجح تحميل: $filename (${bmp.width}x${bmp.height})"
+                    Log.i(TAG, msg)
+                    loadLogs.add("✅ $msg")
                     return bmp
                 } else {
-                    Log.e(TAG, "Failed to decode bitmap stream (returned null) for $filename")
+                    val msg = "فشل فك تشفير $filename (المعالج أرجع null - يحتمل نقص الذاكرة)"
+                    Log.e(TAG, msg)
+                    loadLogs.add("⚠️ $msg")
                 }
             }
         } catch (oom: OutOfMemoryError) {
-            Log.e(TAG, "OutOfMemoryError loading asset: $filename, retrying with downsampling...", oom)
+            val msg = "نفاد الذاكرة (OOM) أثناء تحميل $filename، جاري إعادة المحاولة بحجم أصغر..."
+            Log.e(TAG, msg, oom)
+            loadLogs.add("⚠️ $msg")
+        } catch (e: Throwable) {
+            val msg = "خطأ أثناء فتح ملف الصورة $filename: ${e.localizedMessage}"
+            Log.e(TAG, msg, e)
+            loadLogs.add("❌ $msg")
+            return null
+        }
+
+        // Retries with progressive downsampling if initial decode returned null (native OOM) or threw OOM
+        for (sampleSize in listOf(2, 4)) {
             try {
                 val options = BitmapFactory.Options().apply {
-                    inSampleSize = 2
+                    inSampleSize = sampleSize
                 }
                 context.assets.open(filename).use { stream ->
                     val bmp = BitmapFactory.decodeStream(stream, null, options)
                     if (bmp != null) {
-                        Log.i(TAG, "Successfully loaded downsampled asset: $filename (${bmp.width}x${bmp.height})")
+                        val msg = "تم تحميل نسخة مصغرة (1/$sampleSize) من: $filename (${bmp.width}x${bmp.height})"
+                        Log.i(TAG, msg)
+                        loadLogs.add("✅ $msg")
                         return bmp
                     }
                 }
             } catch (e2: Throwable) {
-                Log.e(TAG, "Failed downsampled loading for $filename", e2)
+                val msg = "فشل التحميل المصغر لـ $filename بالحجم 1/$sampleSize"
+                Log.e(TAG, msg, e2)
+                loadLogs.add("❌ $msg")
             }
-        } catch (e: Throwable) {
-            Log.e(TAG, "Exception opening or decoding asset file: $filename", e)
         }
         return null
     }
@@ -139,25 +170,48 @@ object GameAssets {
                 soundLose = loadSound(context, pool, "lose.wav") // fallback
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize SoundPool", e)
+            val msg = "فشل تهيئة مجمع الأصوات SoundPool: ${e.localizedMessage}"
+            Log.e(TAG, msg, e)
+            loadLogs.add("❌ $msg")
         }
     }
 
     private fun loadSound(context: Context, pool: SoundPool, filename: String): Int {
-        return try {
-            // To bypass assets.openFd restriction on compressed files,
-            // copy the asset file to a cache file and load from there.
-            val cacheFile = java.io.File(context.cacheDir, filename.replace("/", "_"))
-            if (!cacheFile.exists() || cacheFile.length() == 0L) {
-                context.assets.open(filename).use { input ->
-                    cacheFile.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
+        // 1. Primary standard secure method via AssetFileDescriptor (perfect for physical devices)
+        try {
+            context.assets.openFd(filename).use { afd ->
+                val soundId = pool.load(afd, 1)
+                if (soundId != 0) {
+                    val msg = "نجح تحميل الصوت الأصلي: $filename (مُعرف: $soundId)"
+                    Log.i(TAG, msg)
+                    loadLogs.add("✅ $msg")
+                    return soundId
                 }
             }
-            pool.load(cacheFile.absolutePath, 1)
         } catch (e: Exception) {
-            Log.d(TAG, "Failed to load sound asset: $filename (might be optional fallback)")
+            Log.w(TAG, "Failed direct openFd for sound $filename, falling back to cache file approach", e)
+        }
+
+        // 2. Fallback to copy-to-cache approach (for cases where AAPT compressed it on custom build setups)
+        return try {
+            val cacheFile = java.io.File(context.cacheDir, filename.replace("/", "_"))
+            context.assets.open(filename).use { input ->
+                cacheFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            cacheFile.setReadable(true, false) // Ensure world readable permissions
+            val soundId = pool.load(cacheFile.absolutePath, 1)
+            val msg = "تم تحميل الصوت عبر التخزين المؤقت: $filename (مُعرف: $soundId)"
+            Log.i(TAG, msg)
+            loadLogs.add("✅ $msg")
+            soundId
+        } catch (e: Exception) {
+            val msg = "فشل تحميل ملف الصوت $filename: ${e.localizedMessage}"
+            Log.d(TAG, msg)
+            if (!filename.endsWith(".wav")) { // Hide failures of optional fallback wav files
+                loadLogs.add("⚠️ $msg")
+            }
             0
         }
     }
@@ -169,7 +223,6 @@ object GameAssets {
             if (soundSpawn != 0) {
                 pool.play(soundSpawn, 1f, 1f, 1, 0, 1f)
             } else if (soundHit != 0) {
-                // Pitch-shifted Hit sound as fallback for Spawn
                 pool.play(soundHit, 0.5f, 0.5f, 1, 0, 1.2f)
             }
         }
@@ -207,7 +260,6 @@ object GameAssets {
             if (soundWin != 0) {
                 pool.play(soundWin, 1f, 1f, 1, 0, 1f)
             } else if (soundExplosion != 0) {
-                // Celebration explosion
                 pool.play(soundExplosion, 1f, 1f, 1, 0, 1.2f)
             }
         }
@@ -219,7 +271,6 @@ object GameAssets {
             if (soundLose != 0) {
                 pool.play(soundLose, 1f, 1f, 1, 0, 1f)
             } else if (soundHit != 0) {
-                // Low pitch hit sound representing defeat
                 pool.play(soundHit, 1f, 1f, 1, 0, 0.6f)
             }
         }
